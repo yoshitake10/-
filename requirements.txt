@@ -1,0 +1,2 @@
+streamlit>=1.35.0
+chardet>=5.0.0
