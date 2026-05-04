@@ -9,19 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Google OAuth 共有インスタンス
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-
 from ceo_system.agents.briefing_agent import BriefingAgent
 from ceo_system.agents.feedback_agent import FeedbackAgent
 from ceo_system.agents.signal_agent import SignalAgent
 from ceo_system.agents.strategy_agent import StrategyAgent
 from ceo_system.config import get_config
-from ceo_system.connectors.gmail import GmailConnector
-from ceo_system.connectors.google_docs import GoogleDocsConnector
+from ceo_system.mock.factory import get_docs_connector, get_gmail_connector
 from ceo_system.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -32,7 +25,7 @@ class CEOManagementOrchestrator:
 
     def __init__(self) -> None:
         self._cfg = get_config()
-        self._google_creds: Credentials | None = None
+        self._google_creds = None
 
     def run(self) -> dict[str, Any]:
         """メイン実行エントリーポイント"""
@@ -50,7 +43,7 @@ class CEOManagementOrchestrator:
 
         # Phase 1: シグナル検知（データ収集）→ contextに結果を積む
         logger.info("[Phase 1] シグナル検知")
-        docs_connector = self._get_docs_connector()
+        docs_connector = get_docs_connector(self._get_google_creds_or_none())
         signal_agent = SignalAgent(docs_connector=docs_connector)
         results["signal"] = signal_agent.execute(context)
 
@@ -61,8 +54,9 @@ class CEOManagementOrchestrator:
 
         # Phase 3: 会議フィードバック
         logger.info("[Phase 3] 会議フィードバック")
-        if docs_connector:
-            minutes = docs_connector.get_meeting_minutes_texts(
+        docs_for_minutes = get_docs_connector(self._get_google_creds_or_none())
+        if docs_for_minutes:
+            minutes = docs_for_minutes.get_meeting_minutes_texts(
                 days=self._cfg.analysis_window_days
             )
             context["meeting_minutes"] = minutes
@@ -81,8 +75,8 @@ class CEOManagementOrchestrator:
         """全エージェント共通のコンテキストを構築"""
         context: dict[str, Any] = {}
 
-        # 経営コンテキスト（戦略書・KPI）をキャッシュ対象として読み込む
-        docs = self._get_docs_connector()
+        # 経営コンテキスト（戦略書・KPI）
+        docs = get_docs_connector(self._get_google_creds_or_none())
         if docs:
             strategy_text = docs.get_strategy_context()
             kpi_text = docs.get_kpi_context()
@@ -93,24 +87,39 @@ class CEOManagementOrchestrator:
         else:
             context["management_context"] = ""
 
-        # Gmail メール収集
+        # メール収集
         try:
-            gmail = GmailConnector(self._get_google_creds())
+            gmail = get_gmail_connector(self._get_google_creds_or_none())
             emails = gmail.get_recent_emails(days=self._cfg.analysis_window_days)
             context["emails"] = [
                 {"subject": e.subject, "sender": e.sender,
                  "snippet": e.snippet, "body": e.body[:300]}
                 for e in emails
             ]
-            logger.info("Gmail: %d件のメールを収集", len(emails))
+            logger.info("メール: %d件収集", len(emails))
         except Exception as e:
-            logger.warning("Gmail 収集失敗: %s", e)
+            logger.warning("メール収集失敗: %s", e)
             context["emails"] = []
 
         return context
 
-    def _get_google_creds(self) -> Credentials:
-        """Google OAuth 認証情報を取得（キャッシュ済みなら再利用）"""
+    def _get_google_creds_or_none(self):
+        """モード別にGoogle認証情報またはNoneを返す"""
+        if self._cfg.use_mock:
+            return None
+        try:
+            return self._get_google_creds()
+        except Exception as e:
+            logger.warning("Google認証失敗: %s", e)
+            return None
+
+    def _get_google_creds(self):
+        """Google OAuth 認証情報を取得"""
+        from pathlib import Path
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+
         if self._google_creds and self._google_creds.valid:
             return self._google_creds
 
@@ -133,13 +142,6 @@ class CEOManagementOrchestrator:
 
         self._google_creds = creds
         return creds
-
-    def _get_docs_connector(self) -> GoogleDocsConnector | None:
-        try:
-            return GoogleDocsConnector(self._get_google_creds())
-        except Exception as e:
-            logger.warning("Docsコネクター初期化失敗: %s", e)
-            return None
 
     def _log_summary(self, results: dict) -> None:
         logger.info("=" * 60)

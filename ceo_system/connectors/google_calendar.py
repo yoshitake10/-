@@ -5,11 +5,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-
 from ceo_system.config import get_config
 from ceo_system.utils.logger import get_logger
 
@@ -38,10 +33,13 @@ class GoogleCalendarConnector:
         if self._service:
             return self._service
 
-        creds = None
-        import os
         from pathlib import Path
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        from googleapiclient.discovery import build
 
+        creds = None
         token_path = Path(self._cfg.token_path)
         if token_path.exists():
             creds = Credentials.from_authorized_user_file(str(token_path), self._cfg.scopes)

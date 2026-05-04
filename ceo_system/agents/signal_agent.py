@@ -4,7 +4,7 @@ SignalSkill の結果を重要度順に整形してCEOに配信する
 """
 from __future__ import annotations
 
-from ceo_system.connectors.line_works import LineWorksConnector
+from ceo_system.mock.factory import get_line_works_connector
 from ceo_system.skills.signal_skill import SignalSkill
 from ceo_system.utils.logger import get_logger
 
@@ -16,7 +16,7 @@ IMPORTANCE_ICONS = {5: "🔴", 4: "🟠", 3: "🟡", 2: "🟢", 1: "⚪"}
 class SignalAgent:
     def __init__(self, docs_connector=None) -> None:
         self._skill = SignalSkill(docs_connector=docs_connector)
-        self._lw = LineWorksConnector()
+        self._lw = get_line_works_connector()
 
     def execute(self, context: dict) -> dict:
         logger.info("SignalAgent 開始")

@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from googleapiclient.discovery import build
-
 from ceo_system.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,6 +24,7 @@ class EmailMessage:
 
 class GmailConnector:
     def __init__(self, credentials: Any) -> None:
+        from googleapiclient.discovery import build
         self._svc = build("gmail", "v1", credentials=credentials)
 
     def get_recent_emails(self, days: int = 1, max_results: int = 30) -> list[EmailMessage]:

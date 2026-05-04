@@ -5,7 +5,7 @@ S/Aレベルは即時通知、B/Cは朝のブリーフィングに統合
 """
 from __future__ import annotations
 
-from ceo_system.connectors.line_works import LineWorksConnector
+from ceo_system.mock.factory import get_line_works_connector
 from ceo_system.skills.strategy_skill import AlertLevel, StrategySkill
 from ceo_system.utils.logger import get_logger
 
@@ -22,7 +22,7 @@ ALERT_ICONS = {
 class StrategyAgent:
     def __init__(self) -> None:
         self._skill = StrategySkill()
-        self._lw = LineWorksConnector()
+        self._lw = get_line_works_connector()
 
     def execute(self, context: dict) -> dict:
         logger.info("StrategyAgent 開始")

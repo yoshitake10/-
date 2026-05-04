@@ -4,7 +4,7 @@ MeetingSkill の結果をスコアと改善コーチングとして配信する
 """
 from __future__ import annotations
 
-from ceo_system.connectors.line_works import LineWorksConnector
+from ceo_system.mock.factory import get_line_works_connector
 from ceo_system.skills.meeting_skill import MeetingSkill
 from ceo_system.utils.logger import get_logger
 
@@ -19,7 +19,7 @@ def _score_bar(score: int) -> str:
 class FeedbackAgent:
     def __init__(self) -> None:
         self._skill = MeetingSkill()
-        self._lw = LineWorksConnector()
+        self._lw = get_line_works_connector()
 
     def execute(self, context: dict) -> dict:
         logger.info("FeedbackAgent 開始")

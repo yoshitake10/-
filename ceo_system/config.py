@@ -108,6 +108,9 @@ class SystemConfig:
         "仮説", "学び", "意思決定", "アイデア", "気づき", "リスク", "機会"
     ])
 
+    # 仮想モード（USE_MOCK=true で全APIをモックに切り替え）
+    use_mock: bool = os.environ.get("USE_MOCK", "false").lower() == "true"
+
     def validate(self) -> list[str]:
         """必須設定の欠落をチェックし、問題リストを返す"""
         issues = []

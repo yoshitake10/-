@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 
 from ceo_system.config import get_config
-from ceo_system.connectors.sakumiru import SakumiruConnector
+from ceo_system.mock.factory import get_sakumiru_connector
 from ceo_system.skills.base_skill import BaseSkill, SkillResult
 from ceo_system.utils.claude_client import ClaudeClient
 from ceo_system.utils.logger import get_logger
@@ -69,7 +69,7 @@ class StrategySkill(BaseSkill):
     name = "strategy_kpi"
 
     def __init__(self) -> None:
-        self._sakumiru = SakumiruConnector()
+        self._sakumiru = get_sakumiru_connector()
         self._claude = ClaudeClient()
         self._cfg = get_config()
 
@@ -102,13 +102,15 @@ class StrategySkill(BaseSkill):
         # サクミル プロジェクト進捗
         projects = self._sakumiru.get_all_projects()
         if projects:
+            import datetime as _dt
+            _now = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9)))
             proj_lines = []
             for p in projects:
                 rate = f"{p.progress_rate * 100:.0f}%"
                 overdue_count = sum(
                     1 for t in p.tasks
                     if t.due_date and t.status != "done"
-                    and t.due_date < __import__("datetime").datetime.now()
+                    and t.due_date < _now
                 )
                 proj_lines.append(
                     f"- {p.name}: 進捗{rate} | 期限超過タスク{overdue_count}件"

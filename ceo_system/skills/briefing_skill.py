@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from ceo_system.connectors.google_calendar import CalendarEvent, GoogleCalendarConnector
-from ceo_system.connectors.line_works import LineWorksConnector
+from ceo_system.connectors.google_calendar import CalendarEvent
+from ceo_system.mock.factory import get_calendar_connector, get_line_works_connector
 from ceo_system.skills.base_skill import BaseSkill, SkillResult
 from ceo_system.utils.claude_client import ClaudeClient
 from ceo_system.utils.logger import get_logger
@@ -27,8 +27,8 @@ class BriefingSkill(BaseSkill):
     name = "briefing"
 
     def __init__(self) -> None:
-        self._calendar = GoogleCalendarConnector()
-        self._lw = LineWorksConnector()
+        self._calendar = get_calendar_connector()
+        self._lw = get_line_works_connector()
         self._claude = ClaudeClient()
 
     def run(self, context: dict) -> SkillResult:

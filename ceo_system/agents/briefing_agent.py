@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from ceo_system.config import get_config
-from ceo_system.connectors.line_works import LineWorksConnector
+from ceo_system.mock.factory import get_line_works_connector
 from ceo_system.skills.briefing_skill import BriefingSkill
 from ceo_system.utils.logger import get_logger
 
@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class BriefingAgent:
     def __init__(self) -> None:
         self._skill = BriefingSkill()
-        self._lw = LineWorksConnector()
+        self._lw = get_line_works_connector()
         self._cfg = get_config()
 
     def execute(self, context: dict) -> dict:

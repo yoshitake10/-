@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from googleapiclient.discovery import build
-
 from ceo_system.config import get_config
 from ceo_system.utils.logger import get_logger
 
@@ -15,6 +13,7 @@ class GoogleDocsConnector:
     """Google Docs からドキュメントテキストを取得する"""
 
     def __init__(self, credentials: Any) -> None:
+        from googleapiclient.discovery import build
         self._docs_svc = build("docs", "v1", credentials=credentials)
         self._drive_svc = build("drive", "v3", credentials=credentials)
         self._cfg = get_config().google

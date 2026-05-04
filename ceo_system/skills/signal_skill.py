@@ -9,9 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ceo_system.config import get_config
-from ceo_system.connectors.google_docs import GoogleDocsConnector
-from ceo_system.connectors.line_works import LineWorksConnector
-from ceo_system.connectors.sakumiru import SakumiruConnector
+from ceo_system.mock.factory import get_line_works_connector, get_sakumiru_connector
 from ceo_system.skills.base_skill import BaseSkill, SkillResult
 from ceo_system.utils.claude_client import ClaudeClient
 from ceo_system.utils.logger import get_logger
@@ -53,9 +51,9 @@ class Signal:
 class SignalSkill(BaseSkill):
     name = "signal_detection"
 
-    def __init__(self, docs_connector: GoogleDocsConnector | None = None) -> None:
-        self._lw = LineWorksConnector()
-        self._sakumiru = SakumiruConnector()
+    def __init__(self, docs_connector=None) -> None:
+        self._lw = get_line_works_connector()
+        self._sakumiru = get_sakumiru_connector()
         self._docs = docs_connector
         self._claude = ClaudeClient()
         self._cfg = get_config()

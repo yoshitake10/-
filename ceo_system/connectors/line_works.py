@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-import jwt
 import requests
 
 from ceo_system.config import get_config
@@ -40,6 +39,7 @@ class LineWorksConnector:
     # ── 認証 ──────────────────────────────────────────────────────────────────
 
     def _get_access_token(self) -> str:
+        import jwt
         if self._access_token and time.time() < self._token_expires_at - 60:
             return self._access_token
 

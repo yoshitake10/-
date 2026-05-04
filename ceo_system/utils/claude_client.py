@@ -1,12 +1,11 @@
 """
 Anthropic Claude API クライアント
-プロンプトキャッシュを活用して、繰り返し参照する経営コンテキストのコストを削減する
+USE_MOCK=true のときはモック応答を返す。
+本番時はプロンプトキャッシュを活用してコストを削減する。
 """
 from __future__ import annotations
 
 from typing import Any
-
-import anthropic
 
 from ceo_system.config import get_config
 from ceo_system.utils.logger import get_logger
@@ -16,11 +15,20 @@ logger = get_logger(__name__)
 
 class ClaudeClient:
     def __init__(self) -> None:
-        cfg = get_config().claude
-        self._client = anthropic.Anthropic(api_key=cfg.api_key)
-        self._model = cfg.model
-        self._max_tokens = cfg.max_tokens
-        self._cache_enabled = cfg.cache_enabled
+        cfg = get_config()
+        if cfg.use_mock:
+            from ceo_system.mock.claude_mock import MockClaudeClient
+            self._impl = MockClaudeClient()
+            logger.info("[MOCK] Claude API: モックモードで動作します")
+            return
+
+        import anthropic
+        claude_cfg = cfg.claude
+        self._impl = None
+        self._client = anthropic.Anthropic(api_key=claude_cfg.api_key)
+        self._model = claude_cfg.model
+        self._max_tokens = claude_cfg.max_tokens
+        self._cache_enabled = claude_cfg.cache_enabled
 
     def analyze(
         self,
@@ -33,10 +41,13 @@ class ClaudeClient:
         cached_context は経営コンテキスト等の大容量・繰り返し利用テキストに使う。
         prompt caching により API コストを大幅削減できる。
         """
+        # モックモード
+        if self._impl is not None:
+            return self._impl.analyze(system_prompt, user_message, cached_context)
+
         messages: list[dict[str, Any]] = []
 
         if cached_context and self._cache_enabled:
-            # 経営コンテキスト（戦略書・KPI等）をキャッシュブロックに入れる
             messages.append({
                 "role": "user",
                 "content": [
@@ -45,15 +56,13 @@ class ClaudeClient:
                         "text": cached_context,
                         "cache_control": {"type": "ephemeral"},
                     },
-                    {
-                        "type": "text",
-                        "text": user_message,
-                    },
+                    {"type": "text", "text": user_message},
                 ],
             })
         else:
             messages.append({"role": "user", "content": user_message})
 
+        import anthropic
         try:
             response = self._client.messages.create(
                 model=self._model,
@@ -79,13 +88,8 @@ class ClaudeClient:
         system_prompt: str,
         cached_context: str | None = None,
     ) -> list[str]:
-        """複数タスクを順次処理（将来のバッチ API 対応を想定）"""
-        results = []
-        for task in tasks:
-            result = self.analyze(
-                system_prompt=system_prompt,
-                user_message=task["message"],
-                cached_context=cached_context,
-            )
-            results.append(result)
-        return results
+        """複数タスクを順次処理"""
+        return [
+            self.analyze(system_prompt, t["message"], cached_context)
+            for t in tasks
+        ]

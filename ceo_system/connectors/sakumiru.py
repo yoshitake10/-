@@ -104,7 +104,8 @@ class SakumiruConnector:
 
     def get_overdue_tasks(self) -> list[SakumiruTask]:
         """期限超過タスクを横断的に抽出"""
-        now = datetime.now()
+        from datetime import timezone, timedelta
+        now = datetime.now(timezone(timedelta(hours=9)))
         overdue = []
         for project in self.get_all_projects():
             for task in project.tasks:
