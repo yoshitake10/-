@@ -1,2 +1,27 @@
+# 既存（議案書チェッカー）
 streamlit>=1.35.0
 chardet>=5.0.0
+
+# ─── CEOマネジメントシステム ───────────────────────────────────────────────────
+
+# Anthropic Claude API
+anthropic>=0.40.0
+
+# Google API
+google-auth>=2.29.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.131.0
+
+# LINE WORKS Bot認証
+PyJWT>=2.8.0
+cryptography>=42.0.0
+
+# HTTP
+requests>=2.32.0
+
+# スケジューラー
+schedule>=1.2.0
+
+# 環境変数
+python-dotenv>=1.0.0
