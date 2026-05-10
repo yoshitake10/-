@@ -1,0 +1,95 @@
+"""
+Anthropic Claude API クライアント
+USE_MOCK=true のときはモック応答を返す。
+本番時はプロンプトキャッシュを活用してコストを削減する。
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from ceo_system.config import get_config
+from ceo_system.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class ClaudeClient:
+    def __init__(self) -> None:
+        cfg = get_config()
+        if cfg.use_mock:
+            from ceo_system.mock.claude_mock import MockClaudeClient
+            self._impl = MockClaudeClient()
+            logger.info("[MOCK] Claude API: モックモードで動作します")
+            return
+
+        import anthropic
+        claude_cfg = cfg.claude
+        self._impl = None
+        self._client = anthropic.Anthropic(api_key=claude_cfg.api_key)
+        self._model = claude_cfg.model
+        self._max_tokens = claude_cfg.max_tokens
+        self._cache_enabled = claude_cfg.cache_enabled
+
+    def analyze(
+        self,
+        system_prompt: str,
+        user_message: str,
+        cached_context: str | None = None,
+    ) -> str:
+        """
+        Claude に分析を依頼する。
+        cached_context は経営コンテキスト等の大容量・繰り返し利用テキストに使う。
+        prompt caching により API コストを大幅削減できる。
+        """
+        # モックモード
+        if self._impl is not None:
+            return self._impl.analyze(system_prompt, user_message, cached_context)
+
+        messages: list[dict[str, Any]] = []
+
+        if cached_context and self._cache_enabled:
+            messages.append({
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": cached_context,
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                    {"type": "text", "text": user_message},
+                ],
+            })
+        else:
+            messages.append({"role": "user", "content": user_message})
+
+        import anthropic
+        try:
+            response = self._client.messages.create(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=system_prompt,
+                messages=messages,
+            )
+            usage = response.usage
+            logger.info(
+                "Claude API 完了 | input=%d cache_read=%d output=%d",
+                usage.input_tokens,
+                getattr(usage, "cache_read_input_tokens", 0),
+                usage.output_tokens,
+            )
+            return response.content[0].text
+        except anthropic.APIError as e:
+            logger.error("Claude API エラー: %s", e)
+            raise
+
+    def analyze_batch(
+        self,
+        tasks: list[dict[str, str]],
+        system_prompt: str,
+        cached_context: str | None = None,
+    ) -> list[str]:
+        """複数タスクを順次処理"""
+        return [
+            self.analyze(system_prompt, t["message"], cached_context)
+            for t in tasks
+        ]
